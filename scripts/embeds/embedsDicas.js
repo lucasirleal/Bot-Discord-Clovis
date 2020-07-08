@@ -102,7 +102,7 @@ module.exports = {
 			.setColor(configs.officialEmbedColor)
 			.setTitle(":information_source: Central de Informações")
 			.setDescription("**Não é complicado né? :thinking:**.\n" +
-				"Qualquer coisa chama alguém da <@&729059940194451466> pra te ajudar ;)")
+				"Qualquer coisa chama alguém da <@&614952386464579584> pra te ajudar ;)")
 			.setImage("https://i.imgur.com/mWTroke.gif")
 			.setFooter(new Date().toLocaleString(), avatarURL);
 

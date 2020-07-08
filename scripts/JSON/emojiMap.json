@@ -19,6 +19,7 @@
     "cargos_jogos_6": "🌈",
     "cargos_jogos_7": "🤛",
     "cargos_jogos_8": "🍻",
+    "cargos_jogos_9": "🎯",
     "cargos_notifica_1": "🎥",
     "cargos_notifica_2": "📳",
     "cargos_notifica_3": "📢",
@@ -36,5 +37,12 @@
     "faq_6": "💻",
     "regras": "✅",
     "novidades": "📢",
-    "notificacoes": "📢"
+    "notificacoes": "📢",
+    "sorteios": "🎰",
+    "queue_1": "🔂",
+    "queue_2": "🔁",
+    "queue_3": "⏹️",
+    "queue_4": "⬆️",
+    "queue_5": "⬇️",
+    "queue_6": "⏯️"
 }

@@ -6,6 +6,7 @@ const EmbedCargos    = require('../embeds/embedsAdquiraCargos.js');
 const EmbedRegras    = require('../embeds/embedsRegras.js');
 const EmbedNovidades = require('../embeds/embedsNovidades.js');
 const EmbedNotifica  = require('../embeds/embedsNotificacoes.js');
+const EmbedsSorteios = require('../embeds/embedsSorteios.js');
 //JSON paths.
 const path           = require('path');
 const pathToJson     = path.resolve(__dirname, '../JSON/config.json');
@@ -100,5 +101,8 @@ module.exports = {
 	},
 	Notificacoes: async function (message) {
 		EmbedNotifica.Setup(message);
-	}
+	},
+	Sorteios: async function (message) {
+		EmbedsSorteios.Setup(message);
+    }
 };

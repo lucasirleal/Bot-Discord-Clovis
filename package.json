@@ -9,9 +9,17 @@
   "author": "Estúdio Weasel",
   "license": "ISC",
   "dependencies": {
+    "@discordjs/opus": "^0.3.2",
     "discord.js": "^12.2.0",
     "eslint": "^7.3.1",
+    "ffmpeg": "0.0.4",
+    "ffmpeg-binaries": "^3.2.2-3",
+    "fluent-ffmpeg": "^2.1.2",
     "fs": "0.0.1-security",
-    "utf8": "^3.0.0"
+    "node-spotify-api": "^1.1.1",
+    "utf8": "^3.0.0",
+    "youtube-api-v3-search": "^1.2.1",
+    "yt-search": "^2.1.1",
+    "ytdl-core": "^2.1.7"
   }
 }

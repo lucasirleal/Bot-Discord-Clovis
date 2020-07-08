@@ -3,6 +3,7 @@ const Discord          = require('discord.js');
 const fs               = require('fs');
 const EmbedsFAQ        = require('./embeds/embedsFaq.js');
 const EmbedDicas       = require('./embeds/embedsDicas.js');
+const EmbedRegras      = require('./embeds/embedsRegrasSingle.js');
 const InfoChannels     = require('./commands/infoChannels.js');
 const Pings            = require('./commands/pings.js');
 const ChangePrefix     = require('./commands/changePrefix.js');
@@ -13,6 +14,7 @@ const Embed            = require('./commands/embed.js');
 const ChannelInfo      = require('./commands/chaninfo.js');
 const SetInfoChannel   = require('./commands/setInfoChannel.js');
 const Avatar           = require('./commands/avatar.js');
+const MusicHandler     = require('./commands/musicQueue.js');
 //JSON paths.
 const path             = require('path');
 const pathToJson       = path.resolve(__dirname, './JSON/config.json');
@@ -57,6 +59,10 @@ module.exports = {
 			case "boop":
 				Pings.Boop(message, client.user.displayAvatarURL());
 				break;
+			//Regras embeds.
+			case "regras":
+				EmbedRegras.Setup(message, client.user.displayAvatarURL());
+				break;
 			//Prefix changing.
 			case "changeprefix":
 				ChangePrefix.Change(message, args, client.user.displayAvatarURL());
@@ -84,6 +90,10 @@ module.exports = {
 			//Setting up Notificações.
 			case "setup-notifica":
 				Setups.Notificacoes(message);
+				break;
+			//Setting up Sorteios.
+			case "setup-sorteios":
+				Setups.Sorteios(message);
 				break;
 			//Say command.
 			case "say":
@@ -116,6 +126,30 @@ module.exports = {
 			//Avatar command.
 			case "avatar":
 				Avatar.Display(message, client.user.displayAvatarURL());
+				break;
+			//Play command.
+			case "play":
+				MusicHandler.AddToQueue(message, args, client.user.displayAvatarURL());
+				break;
+			//Skip command.
+			case "skip":
+				MusicHandler.Skip(message, client.user.displayAvatarURL());
+				break;
+			//Stop command.
+			case "stop":
+				MusicHandler.Stop(message, args, client.user.displayAvatarURL());
+				break;
+			//Shuffle command.
+			case "shuffle":
+				MusicHandler.Shuffle(message, client.user.displayAvatarURL());
+				break;
+			//Queue command.
+			case "queue":
+				MusicHandler.ShowQueue(message, client.user.displayAvatarURL());
+				break;
+			//Jump command.
+			case "jump":
+				MusicHandler.Jump(message, args, client.user.displayAvatarURL());
 				break;
 			default:
 				console.log("Unexpected command: " + command);

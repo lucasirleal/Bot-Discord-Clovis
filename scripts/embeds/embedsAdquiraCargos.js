@@ -63,7 +63,8 @@ module.exports = {
 				emojiMap.cargos_jogos_5 + " League of Legends\n" +
 				emojiMap.cargos_jogos_6 + " Rainbow Six Siege\n" +
 				emojiMap.cargos_jogos_7 + " Brawhalla\n" +
-				emojiMap.cargos_jogos_8 + " Escape from Tarkov");
+				emojiMap.cargos_jogos_8 + " Escape from Tarkov\n" +
+				emojiMap.cargos_jogos_9 + " COD");
 		//Setting up reactions.
 		var sentMessage = await message.channel.send(embed);
 		sentMessage.react(emojiMap.cargos_jogos_1);
@@ -74,6 +75,7 @@ module.exports = {
 		sentMessage.react(emojiMap.cargos_jogos_6);
 		sentMessage.react(emojiMap.cargos_jogos_7);
 		sentMessage.react(emojiMap.cargos_jogos_8);
+		sentMessage.react(emojiMap.cargos_jogos_9);
 		//Changing the JSON object to listen for the sent message.
 		messageListener.cargos2[0].messageID = "" + sentMessage.id;
 		//Writing to file.

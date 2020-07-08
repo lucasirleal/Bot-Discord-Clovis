@@ -118,15 +118,15 @@ module.exports = {
 			.setDescription(":small_orange_diamond: O servidor tem um sistema de níveis, que você ganha ao interagir no servidor.\n" +
 			":white_small_square: Quanto maior o seu nível, mais poderes você tem no servidor:\n" +
 				"\n" +
-				"> @:shield: Guardião (Lvl 100) - Benefícios anteriores\n" +
-				"> @:older_man: Ancião (Lvl 90) - Benefícios anteriores\n" +
-				"> @:dragon: Mestre (Lvl 70) - Benefícios anteriores e mover membros\n" +
-				"> @:mage: Mago (Lvl 50) - Benefícios anteriores e uso do TTS\n" +
-				"> @:crossed_swords: Lord (Lvl 40) - Benefícios anteriores e fazer stream nos canais\n" +
-				"> @:skull: Mercenário (Lvl 30) - Benefícios anteriores e criar uma guilda\n" +
-				"> @:sparkles: Veterano (Lvl 20) - Benefícios anteriores e usar emojis externos\n" +
-				"> @:star2: Membro Plus (Lvl 10) - Benefícios anteriores e enviar imagens no <#729037689709527081>\n" +
-				"> @:star: Membro (Lvl 5) - Mudar apelido e adicionar reações\n" +
+				"> <@&642879583569313816> - Benefícios anteriores\n" +
+				"> <@&642877283333439500> - Benefícios anteriores\n" +
+				"> <@&642877252966547456> - Benefícios anteriores e mover membros\n" +
+				"> <@&642877269458681880> - Benefícios anteriores e uso do TTS\n" +
+				"> <@&642877203566034976> - Benefícios anteriores e fazer stream nos canais\n" +
+				"> <@&642859754926112769> - Benefícios anteriores e criar uma guilda\n" +
+				"> <@&642877135387754536> - Benefícios anteriores e usar emojis externos\n" +
+				"> <@&551076685257244672> - Benefícios anteriores e enviar imagens no <#729037689709527081>\n" +
+				"> <@&551076643465199656> - Mudar apelido e adicionar reações\n" +
 				"\n" +
 				"Você ganha **aleatoriamente** entre **15~25** de xp **por mensagens em um intervalo de 3 minutos**.\n" +
 				":small_orange_diamond: Veja o **ranking** do servidor e seu nível digitando `!rank` ou `!levels` em <#729037736635400233>.")

@@ -16,10 +16,11 @@ module.exports = {
 		//Single section.
 		const embed = new Discord.MessageEmbed()
 			.setColor(configs.officialEmbedColor)
+			.setThumbnail("https://i.imgur.com/GwpkHWZ.png")
 			.setDescription(":warning: **Seja alertado quando chegarem novidades sobre o servidor, canal ou outras coisas importantes!**\n" +
 				"\n" +
 				"Nesta sala, você será notificado toda vez que postarmos alguma novidade por aqui ;) \n" +
-				"Clique na reação para adicionar ou remover o cargo <@&729049075755778079> para receber as notificações. :loudspeaker:");
+				"Clique na reação para adicionar ou remover o cargo <@&680963908260855826> para receber as notificações. :loudspeaker:");
 		//Setting up reactions.
 		var sentMessage = await message.channel.send(embed);
 		sentMessage.react(emojiMap.novidades);
