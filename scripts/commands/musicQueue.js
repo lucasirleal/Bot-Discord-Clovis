@@ -9,12 +9,16 @@ const pathToJson	 = path.resolve(__dirname, '../JSON/config.json');
 const pathToJson2	 = path.resolve(__dirname, '../JSON/emojiMap.json');
 const pathToJson3  	 = path.resolve(__dirname, '../JSON/messageListener.json');
 //MusicQueue
-var musicQueue       = new Map();
-var serverQueue      = null;
+var serverQueue      = {
+	connection:   null,
+	songs:        [],
+	currentMusic: 0,
+	volume:       5
+};
 var Spotify          = require('node-spotify-api');
 var spotify          = new Spotify({
-		id: "SPOTIFYID",
-		secret: "SPOTIFYSECRET"
+		id: "-",
+		secret: "-"
 });
 var loopingCurrent   = false;
 var loopingQueue     = false;
@@ -29,9 +33,6 @@ module.exports = {
 	AddToQueue: async function (message, args, avatarURL) {
 		//JSON objects.
 		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
-
-		//Setting up server queue.
-		serverQueue = musicQueue.get(message.guild.id);
 
 		//Check if the user is in a valid voice channel.
 		const voiceChannel = message.member.voice.channel;
@@ -57,20 +58,10 @@ module.exports = {
 				return message.channel.send(embed);
 			}
 			//Reconnecing to a voice channel.
-			try {
-				var connection = await voiceChannel.join();
-
-				//Getting the current guild.
-				serverQueue = musicQueue.get(message.guild.id);
-				serverQueue.connection = connection;
-
-				//Plays the music at the position it stopped.
-				await StartPlaying(message.guild, serverQueue.songs[serverQueue.currentMusic], avatarURL, message);
-				return;
-			} catch (err) {
-				console.log(err);
-				return message.channel.send(err);
-			}
+			await Connect(voiceChannel, message, true);
+			//Plays the music at the position it stopped.
+			await StartPlaying(serverQueue.songs[serverQueue.currentMusic], avatarURL, message, true);
+			return;
 		}
 
 		//Handling spotify single track requests.
@@ -122,8 +113,7 @@ module.exports = {
 				});
 		}
 		//Youtube direct link Commands.
-		else
-		{
+		else {
 			//Getting song info.
 			const songInfo = await ytdl.getInfo(args[0]);
 			const song = {
@@ -131,52 +121,13 @@ module.exports = {
 				url: songInfo.video_url,
 				duration: songInfo.length_seconds
 			};
-			//Creating a new queue if none is present.
-			if (!serverQueue) {
-				const queueContruct = {
-					textChannel: message.channel,
-					voiceChannel: voiceChannel,
-					connection: null,
-					songs: [],
-					currentMusic: 0,
-					volume: 5,
-					playing: true
-				};
 
-				musicQueue.set(message.guild.id, queueContruct);
-				queueContruct.songs.push(song);
-
-				//Connecting and joining.
-				try {
-					var connection = await voiceChannel.join();
-					queueContruct.connection = connection;
-
-					//Getting the current guild.
-					serverQueue = musicQueue.get(message.guild.id);
-
-					await StartPlaying(message.guild, queueContruct.songs[0], avatarURL, message);
-				} catch (err) {
-					console.log(err);
-					queue.delete(message.guild.id);
-					return message.channel.send(err);
-				}
-			}
-			else {
-				serverQueue.songs.push(song);
-				const embed = new Discord.MessageEmbed()
-					.setColor(configs.embedColor)
-					.setDescription(":headphones: " + song.title + " foi **adicionada** à fila!")
-					.setFooter(new Date().toLocaleString(), avatarURL);
-
-				message.channel.send(embed);
-
-				//If the dispatcher is not playing, restart it.
-				if (!playingSongs) {
-					await StartPlaying(message.guild, serverQueue.songs[serverQueue.currentMusic + 1], avatarURL, message);
-				}
-
-				return message.delete();
-			}
+			//Pushing the song.
+			serverQueue.songs.push(song);
+			//Connecting.
+			Connect(voiceChannel, message);
+			//Playing the song.
+			StartPlaying(serverQueue.songs[serverQueue.currentMusic], avatarURL, message);
 		}
 	},
 	//Skips one song.
@@ -203,8 +154,12 @@ module.exports = {
 
 			return message.channel.send(embed);
 		}
+
 		//Ending connection of the current song.
-		serverQueue.connection.dispatcher.end();
+		serverQueue.currentMusic++;
+		if (serverQueue.currentMusic > serverQueue.songs.length) { serverQueue.currentMusic = 0; }
+		StartPlaying(serverQueue.songs[serverQueue.currentMusic], avatarURL, message, true);
+
 		const embed = new Discord.MessageEmbed()
 			.setColor(configs.embedColor)
 			.setDescription(":headphones: Uma música foi pulada!")
@@ -279,11 +234,11 @@ module.exports = {
 		}
 		//Shuffles.
 		serverQueue.songs = Shuffle(serverQueue.songs);
-		StartPlaying(message.guild, serverQueue.songs[0], avatarURL, message);
+		StartPlaying(serverQueue.songs[0], avatarURL, message);
 
 		//Returns to music zero.
 		serverQueue.currentMusic = 0;
-		StartPlaying()
+		this.Skip(message, avatarURL);
 
 		//Returns a little feedback.
 		const embed = new Discord.MessageEmbed()
@@ -293,6 +248,7 @@ module.exports = {
 
 		return message.channel.send(embed);
 	},
+	//Shows an embed with a portion of the queue.
 	ShowQueue: async function (message, avatarURL) {
 		//JSON objects.
 		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
@@ -311,7 +267,7 @@ module.exports = {
 			return message.channel.send(embed);
 		}
 		//Checking if there is any music in the queue.
-		if (!serverQueue) {
+		if (!serverQueue || !serverQueue.songs || serverQueue.songs.length < 1) {
 			const embed = new Discord.MessageEmbed()
 				.setColor(configs.embedColor)
 				.setDescription(":warning: Não há nenhuma música na fila!")
@@ -343,24 +299,24 @@ module.exports = {
 
 			if (serverQueue.currentMusic == i)
 			{
-				currentSongFormatted += ":small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[i].title + "\n";
-				queueFormatted += "> :small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[i].title + "\n";
+				currentSongFormatted += ":small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + PrettyPrint_Strings(serverQueue.songs[i].title, 40) + "\n";
+				queueFormatted += "> :small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + PrettyPrint_Strings(serverQueue.songs[i].title, 40) + "\n";
 			}
 			else
 			{
-				queueFormatted += "> :small_blue_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[i].title + "\n";
+				queueFormatted += "> :small_blue_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + PrettyPrint_Strings(serverQueue.songs[i].title, 40) + "\n";
             }
 		}
 
 		text += currentSongFormatted;
 
-		if (loopingCurrent) { text += "\n:repeat_one: **Repetindo música atual:** Ativado.\n"; }
-		else { text += "\n:repeat_one: **Repetindo música atual:** Desativado.\n"; }
+		if (loopingCurrent) { text += "\n:repeat_one: Repetindo música atual: **Ativado**.\n"; }
+		else { text += "\n:repeat_one: Repetindo música atual: **Desativado**.\n"; }
 
-		if (loopingQueue) { text += ":repeat: **Repetindo fila:** Ativado.\n"; }
-		else { text += ":repeat: **Repetindo fila:** Desativado.\n"; }
+		if (loopingQueue) { text += ":repeat: Repetindo fila: **Ativado**.\n"; }
+		else { text += ":repeat: Repetindo fila: **Desativado**.\n"; }
 		
-		text += "\n<:derp:615552071344717837> **Essas aqui são foda:**\n";
+		text += "\n<:derp:615552071344717837> **Na caixinha de músicas:** (" + serverQueue.songs.length + " no total)\n";
 		text += queueFormatted;
 
 		embed.setDescription(text);
@@ -377,6 +333,7 @@ module.exports = {
 		messageListener.queue[0].messageID = "" + sent.id;
 		fs.writeFileSync(pathToJson3, JSON.stringify(messageListener));
 	},
+	//Jumps to a desired music.
 	Jump: async function (message, args, avatarURL) {
 		//JSON objects.
 		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
@@ -421,7 +378,7 @@ module.exports = {
 		}
 
 		serverQueue.currentMusic = parseInt(args[0]);
-		StartPlaying(message.guild, serverQueue.songs[serverQueue.currentMusic], avatarURL, message);
+		StartPlaying(message.guild, serverQueue.songs[serverQueue.currentMusic], avatarURL, message, true);
 
 		const embed = new Discord.MessageEmbed()
 			.setColor(configs.embedColor)
@@ -430,7 +387,8 @@ module.exports = {
 
 		return message.channel.send(embed);
 	},
-	SetLoopingOne: async function (message)
+	//Sets the queue as looping the current music.
+	SetLoopingOne: async function (message, avatarURL)
 	{
 		//JSON objects.
 		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
@@ -443,6 +401,7 @@ module.exports = {
 				.setDescription(":repeat_one: Ok, eu **vou repetir** sempre essa música.");
 
 			let sent = await message.channel.send(embed);
+			this.UpdateQueueEmbed(message, avatarURL);
 			setTimeout(() => sent.delete(), 3000);
 		}
 		else
@@ -452,11 +411,13 @@ module.exports = {
 				.setDescription(":repeat_one: Certo, vamos ouvir as outras músicas então.");
 
 			let sent = await message.channel.send(embed);
+			this.UpdateQueueEmbed(message, avatarURL);
 			setTimeout(() => sent.delete(), 3000);
         }
 
 	},
-	SetLoopingQueue: async function (message) {
+	//Sets the queue as looping itself.
+	SetLoopingQueue: async function (message, avatarURL) {
 		//JSON objects.
 		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
 
@@ -467,19 +428,22 @@ module.exports = {
 				.setColor(configs.embedColor)
 				.setDescription(":repeat: Ok, eu **vou repetir** sempre essa playlist.");
 
-			let sent = message.channel.send(embed);
-			setTimeout(() => message.delete(), 3000);
+			let sent = await message.channel.send(embed);
+			this.UpdateQueueEmbed(message, avatarURL);
+			setTimeout(() => sent.delete(), 3000);
 		}
 		else {
 			const embed = new Discord.MessageEmbed()
 				.setColor(configs.embedColor)
 				.setDescription(":repeat: Beleza, vou parar quando a playlist acabar.");
 
-			let sent = message.channel.send(embed);
-			setTimeout(() => message.delete(), 3000);
+			let sent = await message.channel.send(embed);
+			this.UpdateQueueEmbed(message, avatarURL);
+			setTimeout(() => sent.delete(), 3000);
 		}
 
 	},
+	//Displays the next page of the queue.
 	NextQueue: async function (message, avatarURL) {
 		//JSON objects.
 		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
@@ -500,53 +464,9 @@ module.exports = {
 			return message.channel.send(embed);
 		}
 
-		var text = ":headphones: **Vitrola do Clóvinho:** \n\n<:love:615552071474741259> **Tocando agora:**\n";
-		var currentSongFormatted = "";
-		var queueFormatted = "";
-
-		const embed = new Discord.MessageEmbed()
-			.setColor(configs.embedColor)
-			.setFooter(new Date().toLocaleString(), avatarURL);
-
-		var minNumber = queueIndex * 10;
-		if (minNumber > serverQueue.songs.length) { minNumber = serverQueue.songs.length - 10; }
-		if (minNumber < 0) { minNumber = 0; }
-
-		var maxNumber = (queueIndex * 10) + 10;
-		if (maxNumber > serverQueue.songs.length) { maxNumber = serverQueue.songs.length; }
-
-		if (serverQueue.songs.length < 11) { minNumber = 0; maxNumber = serverQueue.songs.length; }
-
-		for (var i = minNumber; i < maxNumber; i++) {
-			//Calculating the duration of the song.
-			var minutes = Math.floor(serverQueue.songs[i].duration / 60);
-			var seconds = serverQueue.songs[i].duration - minutes * 60;
-
-			if (serverQueue.currentMusic == i)
-			{
-				queueFormatted += "> :small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[i].title + "\n";
-			}
-			else {
-				queueFormatted += "> :small_blue_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[i].title + "\n";
-			}
-		}
-
-		currentSongFormatted += ":small_orange_diamond: `" + PrettyPrint_Ints(serverQueue.currentMusic, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[serverQueue.currentMusic].title + "\n";
-		text += currentSongFormatted;
-
-		if (loopingCurrent) { text += "\n:repeat_one: **Repetindo música atual:** Ativado.\n"; }
-		else { text += "\n:repeat_one: **Repetindo música atual:** Desativado.\n"; }
-
-		if (loopingQueue) { text += ":repeat: **Repetindo fila:** Ativado.\n"; }
-		else { text += ":repeat: **Repetindo fila:** Desativado.\n"; }
-
-		text += "\n<:derp:615552071344717837> **Essas aqui são foda:**\n";
-		text += queueFormatted;
-
-		embed.setDescription(text);
-
-		message.edit(embed);
+		this.UpdateQueueEmbed(message, avatarURL);
 	},
+	//Displays the previous page of the queue.
 	PreviousQueue: async function (message, avatarURL) {
 		//JSON objects.
 		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
@@ -567,6 +487,55 @@ module.exports = {
 			return message.channel.send(embed);
 		}
 
+		this.UpdateQueueEmbed(message, avatarURL);
+	},
+	//Plays and resumes the current music.
+	TriggerPlayPause: async function (message, avatarURL) {
+		//JSON objects.
+		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
+
+		if (dispatcher.paused) {
+			dispatcher.resume();
+			const embed = new Discord.MessageEmbed()
+				.setColor(configs.embedColor)
+				.setDescription(":play_pause: Agora vamo deboxar legal com o DJ Clóvinho!");
+
+			let sent = await message.channel.send(embed);
+			setTimeout(() => sent.delete(), 3000);
+		} else {
+			dispatcher.pause();
+			const embed = new Discord.MessageEmbed()
+				.setColor(configs.embedColor)
+				.setDescription(":play_pause: Esse cara aí cortou minha vibe.");
+
+			let sent = await message.channel.send(embed);
+			setTimeout(() => sent.delete(), 3000);
+        }
+	},
+	//Updates the queue VISUALLY.
+	UpdateQueueEmbed: async function (message, avatarURL) {
+		//JSON objects.
+		var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
+
+		//Checking for a valid voice channel.
+		if (!message.member.voice.channel) {
+			const embed = new Discord.MessageEmbed()
+				.setColor(configs.embedColor)
+				.setDescription(":warning: Você precisa estar em um chat de voz para usar esse comando.")
+				.setFooter(new Date().toLocaleString(), avatarURL);
+
+			return message.channel.send(embed);
+		}
+		//Checking if there is any music in the queue.
+		if (!serverQueue) {
+			const embed = new Discord.MessageEmbed()
+				.setColor(configs.embedColor)
+				.setDescription(":warning: Não há nenhuma música na fila!")
+				.setFooter(new Date().toLocaleString(), avatarURL);
+
+			return message.channel.send(embed);
+		}
+
 		var text = ":headphones: **Vitrola do Clóvinho:** \n\n<:love:615552071474741259> **Tocando agora:**\n";
 		var currentSongFormatted = "";
 		var queueFormatted = "";
@@ -579,46 +548,42 @@ module.exports = {
 		if (minNumber > serverQueue.songs.length) { minNumber = serverQueue.songs.length - 10; }
 		if (minNumber < 0) { minNumber = 0; }
 
-		var maxNumber = (queueIndex * 10) + 10;
+		var maxNumber = minNumber + 10;
 		if (maxNumber > serverQueue.songs.length) { maxNumber = serverQueue.songs.length; }
 
-		if (serverQueue.songs.length < 11) { minNumber = 0; maxNumber = serverQueue.songs.length; }
-
-		for (var i = minNumber; i < maxNumber; i++) {
+		for (var i = 0; i < serverQueue.songs.length; i++) {
 			//Calculating the duration of the song.
 			var minutes = Math.floor(serverQueue.songs[i].duration / 60);
 			var seconds = serverQueue.songs[i].duration - minutes * 60;
 
-			if (serverQueue.currentMusic == i) {
-				queueFormatted += "> :small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[i].title + "\n";
+			if (serverQueue.currentMusic == i)
+			{
+				currentSongFormatted += ":small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + PrettyPrint_Strings(serverQueue.songs[i].title, 40) + "\n";
+				if (i >= minNumber && i <= maxNumber)
+				{
+					queueFormatted += "> :small_orange_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + PrettyPrint_Strings(serverQueue.songs[i].title, 40) + "\n";
+                }
 			}
-			else {
-				queueFormatted += "> :small_blue_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[i].title + "\n";
+			else if (i >= minNumber && i <= maxNumber)
+			{
+				queueFormatted += "> :small_blue_diamond: `" + PrettyPrint_Ints(i, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + PrettyPrint_Strings(serverQueue.songs[i].title, 40) + "\n";
 			}
 		}
 
-		currentSongFormatted += ":small_orange_diamond: `" + PrettyPrint_Ints(serverQueue.currentMusic, "0", 2) + ".` `⏱️" + PrettyPrint_Ints(minutes, "0", 2) + ":" + PrettyPrint_Ints(seconds, "0", 2) + "` " + serverQueue.songs[serverQueue.currentMusic].title + "\n";
 		text += currentSongFormatted;
 
-		if (loopingCurrent) { text += "\n:repeat_one: **Repetindo música atual:** Ativado.\n"; }
-		else { text += "\n:repeat_one: **Repetindo música atual:** Desativado.\n"; }
+		if (loopingCurrent) { text += "\n:repeat_one: Repetindo música atual: **Ativado**.\n"; }
+		else { text += "\n:repeat_one: Repetindo música atual: **Desativado**.\n"; }
 
-		if (loopingQueue) { text += ":repeat: **Repetindo fila:** Ativado.\n"; }
-		else { text += ":repeat: **Repetindo fila:** Desativado.\n"; }
+		if (loopingQueue) { text += ":repeat: Repetindo fila: **Ativado**.\n"; }
+		else { text += ":repeat: Repetindo fila: **Desativado**.\n"; }
 
-		text += "\n<:derp:615552071344717837> **Essas aqui são foda:**\n";
+		text += "\n<:derp:615552071344717837> **Na caixinha de músicas:** (" + serverQueue.songs.length + " no total)\n";
 		text += queueFormatted;
 
 		embed.setDescription(text);
 
 		message.edit(embed);
-	},
-	TriggerPlayPause: async function (message, avatarURL) {
-		if (dispatcher.paused) {
-			dispatcher.resume();
-		} else {
-			dispatcher.pause();
-        }
 	}
 };
 
@@ -644,17 +609,33 @@ function Shuffle(array) {
 }
 
 //Plays the desired song on the current voice chat connection.
-async function StartPlaying(guild, song, avatarURL, message) {
+async function StartPlaying(song, avatarURL, message, forceReset = false) {
 	//JSON objects.
 	var configs = JSON.parse(fs.readFileSync(pathToJson).toString());
 
 	//If there is no song (meaning the queue ended), we return but keep the connection.
-	if (!song) {
+	if (!song || (playingSongs && !forceReset)) {
 		return;
 	}
 
+	if (!serverQueue.connection) {
+		//Check if the user is in a valid voice channel.
+		const voiceChannel = message.member.voice.channel;
+		if (!voiceChannel) {
+			const embed = new Discord.MessageEmbed()
+				.setColor(configs.embedColor)
+				.setDescription(":warning: Você precisa estar em um chat de voz para usar esse comando.")
+				.setFooter(new Date().toLocaleString(), avatarURL);
+
+			return message.channel.send(embed);
+		}
+		await Connect(voiceChannel, message);
+    }
+
 	dispatcher = serverQueue.connection
+		//Plays the song.
 		.play(ytdl(song.url))
+		//Called when the song is finished.
 		.on("finish", () => {
 			playingSongs = false;
 			if (!loopingCurrent) {
@@ -663,35 +644,36 @@ async function StartPlaying(guild, song, avatarURL, message) {
 			if (loopingQueue && serverQueue.currentMusic >= serverQueue.songs.length) {
 				serverQueue.currentMusic = 0;
 			}
-			StartPlaying(guild, serverQueue.songs[serverQueue.currentMusic], avatarURL, message);
+			StartPlaying(serverQueue.songs[serverQueue.currentMusic], avatarURL, message);
 		})
-		.on("start", () => {
+		//Called when the song is started.
+		.on("start", async function () {
 			playingSongs = true;
 			const embed = new Discord.MessageEmbed()
 				.setColor(configs.embedColor)
 				.setDescription(":headphones: **Tocando agora:** " + song.title)
 				.setFooter(new Date().toLocaleString(), avatarURL);
 
-			message.channel.send(embed);
-        })
+			let sent = await message.channel.send(embed);
+			setTimeout(() => sent.delete(), 3000);
+		})
+		//Called on errors.
 		.on("error", (error) => {
 			console.error(error);
-			if (!loopingCurrent)
-			{
-				serverQueue.currentMusic++;
-			}
-			if (loopingQueue && serverQueue.currentMusic >= serverQueue.songs.length)
-			{
-				serverQueue.currentMusic = 0;
-            }
-			StartPlaying(guild, serverQueue.songs[serverQueue.currentMusic], avatarURL, message);
 		});
+	//Setting volume.
 	dispatcher.setVolumeLogarithmic(serverQueue.volume / 5);
 }
 
 //Prettyprints ints. Used for timers and numbers that require a zero left of them.
 function PrettyPrint_Ints(string, pad, length) {
 	return (new Array(length + 1).join(pad) + string).slice(-length);
+}
+
+//Prettyprints a string limited to a fixed amount of characters.
+function PrettyPrint_Strings(string, size) {
+	if (string.length > size) { return string.substring(0, size) + "..."; }
+	else { return string; }
 }
 
 //Handles spotify results by searching them on youtube first.
@@ -708,73 +690,65 @@ async function HandleSpotifyResults(results, message, voiceChannel, avatarURL) {
 			var videos = r.videos;
 			//Getting the video metadata from YTDL.
 			const songInfo = await ytdl.getInfo(videos[0].url);
+			console.log(songInfo.title);
 			const song = {
 				title: songInfo.title,
 				url: songInfo.video_url,
 				duration: songInfo.length_seconds
 			};
 
-			//Constructing queue.
-			if (!serverQueue) {
-				const queueContruct = {
-					textChannel: message.channel,
-					voiceChannel: voiceChannel,
-					connection: null,
-					songs: [],
-					currentMusic: 0,
-					volume: 5,
-					playing: true
-				};
-				//Setting a new queue.
-				musicQueue.set(message.guild.id, queueContruct);
-				queueContruct.songs.push(song);
+			//Pushing a song.
+			serverQueue.songs.push(song);
+			//Connecting to voice chats.
+			Connect(voiceChannel, message);
 
-				//Connecting and joining.
-				try {
-					var connection = await voiceChannel.join();
-					queueContruct.connection = connection;
-
-					//Getting the current guild.
-					serverQueue = musicQueue.get(message.guild.id);
-					//Ordering for the bot to start playing the first song.
-					await StartPlaying(message.guild, queueContruct.songs[0], avatarURL, message);
-				} catch (err) {
-					console.log(err);
-					queue.delete(message.guild.id);
-					return message.channel.send(err);
-				}
-			}
-			else {
-				//If there is already a queue going on, we just add it to the list.
-				serverQueue.songs.push(song);
-
-				//Returning feedbacks.
-				//In case of multiple musics being added.
-				if (results.length > 1 && i == results.length - 1) {
-					const embed = new Discord.MessageEmbed()
-						.setColor(configs.embedColor)
-						.setDescription(":headphones: " + results.length + " músicas foram **adicionadas** à fila!")
-						.setFooter(new Date().toLocaleString(), avatarURL);
-
-					message.channel.send(embed);
-					return message.delete();
-				}
-				//When only one song was added.
-				else if (results.length == 1) {
-					const embed = new Discord.MessageEmbed()
-						.setColor(configs.embedColor)
-						.setDescription(":headphones: " + serverQueue.songs[serverQueue.songs.length - 1].title + " foi **adicionada** à fila!")
-						.setFooter(new Date().toLocaleString(), avatarURL);
-
-					message.channel.send(embed);
-					return message.delete();
-				}
-
-				//If the dispatcher is not playing, restart it.
-				if (!playingSongs) {
-					await StartPlaying(message.guild, serverQueue.songs[serverQueue.currentMusic + 1], avatarURL, message);
-                }
-			}
+			//Ordering the bot to play a music. This will be ignored if the bot is already playing something.
+			StartPlaying(serverQueue.songs[0], avatarURL, message);
 		});
-    }
+		//Sets a little timer just so we don't run into memory issues.
+		await Timer(100);
+	}
+
+	//Returning feedbacks.
+	//In case of multiple musics being added.
+	if (results.length > 1) {
+		const embed = new Discord.MessageEmbed()
+			.setColor(configs.embedColor)
+			.setDescription(":headphones: " + results.length + " músicas foram **adicionadas** à fila!")
+			.setFooter(new Date().toLocaleString(), avatarURL);
+
+		let sent = await message.channel.send(embed);
+		setTimeout(() => sent.delete(), 3000);
+	}
+	//When only one song was added.
+	else if (results.length == 1) {
+		const embed = new Discord.MessageEmbed()
+			.setColor(configs.embedColor)
+			.setDescription(":headphones: " + serverQueue.songs[serverQueue.songs.length - 1].title + " foi **adicionada** à fila!")
+			.setFooter(new Date().toLocaleString(), avatarURL);
+
+		let sent = await message.channel.send(embed);
+		setTimeout(() => sent.delete(), 3000);
+	}
+}
+
+//Returns a Promise that resolves after "ms" Milliseconds
+async function Timer(ms) {
+	return new Promise(res => setTimeout(res, ms));
+}
+
+//Tries to connect to a valid voice channel.
+async function Connect(voiceChannel, message, force = false) {
+	//Constructing connection.
+	if (!serverQueue.connection || force) {
+		console.log("Constructing new connection.");
+		//Connecting and joining.
+		try {
+			var connection = await voiceChannel.join();
+			serverQueue.connection = connection;
+		} catch (err) {
+			console.log(err);
+			return message.channel.send(err);
+		}
+	}
 }

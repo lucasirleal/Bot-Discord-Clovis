@@ -221,8 +221,8 @@ module.exports = {
 				reaction.emoji.name != emojiMap.queue_6)
 			{ reaction.remove(); return; }
 
-			if (reaction.emoji.name == emojiMap.queue_1) { await musicQueue.SetLoopingOne(reaction.message); }
-			else if (reaction.emoji.name == emojiMap.queue_2) { await musicQueue.SetLoopingQueue(reaction.message); }
+			if (reaction.emoji.name == emojiMap.queue_1) { await musicQueue.SetLoopingOne(reaction.message, client.user.displayAvatarURL()); }
+			else if (reaction.emoji.name == emojiMap.queue_2) { await musicQueue.SetLoopingQueue(reaction.message, client.user.displayAvatarURL()); }
 			else if (reaction.emoji.name == emojiMap.queue_3) { await musicQueue.Stop(reaction.message, client.user.displayAvatarURL()); }
 			else if (reaction.emoji.name == emojiMap.queue_4) { await musicQueue.PreviousQueue(reaction.message, client.user.displayAvatarURL()); }
 			else if (reaction.emoji.name == emojiMap.queue_5) { await musicQueue.NextQueue(reaction.message, client.user.displayAvatarURL()); }
