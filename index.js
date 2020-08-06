@@ -19,6 +19,13 @@ client.once('ready', () => {
 
 //Runs everytime someone sends a message on any channel.
 client.on('message', message => {
+	//Handles messages on the designed channel of sugestions.
+	if (message.channel.id == "731259047659044905") {
+		message.react('👍🏿');
+		message.react('👎🏿');
+		return;
+    }
+
 	//Calls the command handlers that calls all other scripts.
 	CommandHandler.HandleMessage(message, client);
 });

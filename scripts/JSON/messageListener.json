@@ -1,1 +1,37 @@
-{"registro2":[{"messageID":"729752493034176603"}],"registro3":[{"messageID":"729752493898334218"}],"registro4":[{"messageID":"729752494292336820"}],"cargos1":[{"messageID":"729752657463345274"}],"cargos2":[{"messageID":"729752658470240286"}],"cargos3":[{"messageID":"729752658763579426"}],"faq":["729942138418364486","730112051006931005"],"dicas":["730003784373239819"],"regras":[{"messageID":"729752379045707856"}],"novidades":[{"messageID":"729752814292697090"}],"notificacoes":[{"messageID":"729752866146746498"}],"sorteios":[{"messageID":"729752921679593573"}],"queue":[{"messageID":"730513984087654422"}]}
+{
+    "registro2": [{
+        "messageID": "729752493034176603"
+    }],
+    "registro3": [{
+        "messageID": "729752493898334218"
+    }],
+    "registro4": [{
+        "messageID": "729752494292336820"
+    }],
+    "cargos1": [{
+        "messageID": "729752657463345274"
+    }],
+    "cargos2": [{
+        "messageID": "729752658470240286"
+    }],
+    "cargos3": [{
+        "messageID": "729752658763579426"
+    }],
+    "faq": [],
+    "dicas": [],
+    "regras": [{
+        "messageID": "729752379045707856"
+    }],
+    "novidades": [{
+        "messageID": "729752814292697090"
+    }],
+    "notificacoes": [{
+        "messageID": "729752866146746498"
+    }],
+    "sorteios": [{
+        "messageID": "729752921679593573"
+    }],
+    "queue": [{
+        "messageID": "730815196548956280"
+    }]
+}
