@@ -1,5 +1,8 @@
-# Bot Discord Clovis
+# Bot Discord Clóvis
  Bot criado em JavaScript para o canal do Discord do YouTuber Max Palaro, feito para atender as necessidades básicas do servidor:
+ 
+ `Vale lembrar que o Clóvis ainda está em desenvolvimento, e por isso seu código ainda tem algumas falhas que serão exploradas com o passar do tempo! ;)`
+ 
  
 > ### Queue musical
 > Uma queue musical funcional que procura tanto músicas do Spotify, quanto do YouTube para tocar nas chamadas em que o bot for convidado!
